@@ -40,6 +40,7 @@ async function loadReadmeSummary(repository) {
       .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
       .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
       .replace(/<[^>]*>/g, " ")
+      .replace(/^\s{0,3}>\s?/gm, "")
       .replace(/^\s{0,3}#{1,6}\s*/gm, "")
       .replace(/[*_`~]/g, "")
       .replace(/\s+/g, " ")
