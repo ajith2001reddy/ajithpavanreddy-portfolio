@@ -1,6 +1,6 @@
 # Ajith Kambham — Data Engineering Portfolio
 
-A responsive, static portfolio site. Recent non-fork, non-archived public repositories and their primary languages are fetched from the GitHub REST API when the page loads; no access token or build step is required.
+A responsive, static portfolio site. Recent non-fork, non-archived public repositories, their primary languages, and README summaries are fetched from the GitHub REST API when the page loads; the portfolio repository itself is excluded. No access token or build step is required.
 
 ## Run locally
 

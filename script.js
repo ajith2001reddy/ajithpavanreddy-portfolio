@@ -1,4 +1,5 @@
 const GITHUB_USERNAME = "ajith2001reddy";
+const PORTFOLIO_REPOSITORY = "ajithpavanreddy-portfolio";
 const MAX_PROJECTS = 6;
 
 const projectsGrid = document.querySelector("#projects-grid");
@@ -16,9 +17,43 @@ function addTag(container, label) {
   container.append(tag);
 }
 
+async function loadReadmeSummary(repository) {
+  const response = await fetch(
+    `https://api.github.com/repos/${GITHUB_USERNAME}/${encodeURIComponent(repository.name)}/readme`,
+    { headers: { Accept: "application/vnd.github+json" } },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GitHub README request returned ${response.status}`);
+
+  const readme = await response.json();
+  if (typeof readme.content !== "string" || readme.encoding !== "base64") {
+    throw new Error("GitHub returned an unexpected README format");
+  }
+
+  const bytes = Uint8Array.from(atob(readme.content.replace(/\s/g, "")), (character) => character.charCodeAt(0));
+  const markdown = new TextDecoder().decode(bytes);
+  const paragraphs = markdown.split(/\r?\n\s*\r?\n/);
+  for (const paragraph of paragraphs) {
+    if (/^\s*(?:\[!\[|!\[|<img|```|<!--)/i.test(paragraph)) continue;
+    const summary = paragraph
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+      .replace(/[*_`~]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (summary.length >= 60) {
+      return summary.length > 220 ? `${summary.slice(0, 217).trimEnd()}…` : summary;
+    }
+  }
+  return null;
+}
+
 function renderRepositories(repositories) {
   const selected = repositories
-    .filter((repository) => !repository.fork && !repository.archived)
+    .filter((repository) => !repository.fork && !repository.archived && repository.name !== PORTFOLIO_REPOSITORY)
     .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
     .slice(0, MAX_PROJECTS);
 
@@ -47,7 +82,7 @@ function renderRepositories(repositories) {
     const title = document.createElement("h3");
     title.textContent = repository.name.replace(/[-_]/g, " ");
     const description = document.createElement("p");
-    description.textContent = repository.description || "No project summary has been added yet. Open the repository on GitHub for details.";
+    description.textContent = repository.description || "Loading project summary…";
     const tags = document.createElement("div");
     tags.className = "tag-list";
     if (repository.language) addTag(tags, repository.language);
@@ -66,6 +101,17 @@ function renderRepositories(repositories) {
     footer.append(updated, link);
     card.append(top, title, description, tags, footer);
     projectsGrid.append(card);
+
+    if (!repository.description) {
+      loadReadmeSummary(repository)
+        .then((summary) => {
+          description.textContent = summary || "No project summary has been added yet. Open the repository on GitHub for details.";
+        })
+        .catch((error) => {
+          console.error(`Unable to load the README for ${repository.name}:`, error);
+          description.textContent = "Project summary could not be loaded. Open the repository on GitHub for details.";
+        });
+    }
   });
 
   projectsStatus.hidden = true;
